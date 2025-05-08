@@ -77,6 +77,22 @@ socket.onmessage = (event) => {
 
             // Обновление позиции маркера
             gpsEntity.position = Cesium.Cartesian3.fromDegrees(longitude, latitude);
+
+            // Обновление div-интерфейса
+            const coordBox = document.getElementById('gpsCoordinates');
+            if (coordBox) coordBox.innerText = `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+            // Обновление статуса RTK (из GGA)
+            const gpsStatus = document.getElementById('gpsStatus');
+            if (gpsStatus && parts.length > 6) {
+                const fixType = parts[6];
+                let fixLabel = 'Нет Fix';
+                if (fixType === '1') fixLabel = 'Fix (обычный)';
+                if (fixType === '2') fixLabel = 'DGPS';
+                if (fixType === '4') fixLabel = 'RTK (Fix)';
+                if (fixType === '5') fixLabel = 'RTK (Float)';
+                gpsStatus.innerText = `RTK: ${fixLabel}`;
+            }
         }
     }
 };
