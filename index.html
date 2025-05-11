@@ -86,7 +86,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer;
+    window.viewer = undefined;
     let currentSession = null;
     let renderer, canvas, scene, camera, cube;
     let refSpace = null;
@@ -110,7 +110,7 @@
     async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
       if (!viewer) {
-        viewer = new Cesium.Viewer('cesiumContainer', {
+        window.viewer = new Cesium.Viewer('cesiumContainer', {
           imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
           baseLayerPicker: true,
           shouldAnimate: true,
@@ -260,6 +260,151 @@
         document.getElementById('assetId').value = assetId;
         validateInputs();
         await loadScene(token, assetId);
+
+let useRTK = false;
+let geoWatchId = null;
+
+// Запустить внутренний GPS (если RTK недоступен)
+function startInternalGPS() {
+  if (!navigator.geolocation) {
+    console.warn("❌ Внутренний GPS не поддерживается этим устройством.");
+    return;
+  }
+
+  geoWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      if (useRTK) return; // RTK уже активен — игнорируем
+
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      console.log(`📍 Внутренний GPS: ${lat}, ${lon}`);
+
+      gpsEntity.position = Cesium.Cartesian3.fromDegrees(lon, lat);
+
+      const coordBox = document.getElementById('gpsCoordinates');
+      if (coordBox) {
+        coordBox.innerText = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      }
+
+      const gpsStatus = document.getElementById('gpsStatus');
+      if (gpsStatus) {
+        gpsStatus.innerText = 'Внутренний GPS';
+        gpsStatus.style.color = 'deepskyblue';
+      }
+    },
+    (error) => {
+      console.error("❌ Ошибка внутреннего GPS:", error);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 2000,
+      timeout: 10000,
+    }
+  );
+}
+
+        // Подключаемся к WebSocket на ESP32
+const socket = new WebSocket('ws://192.168.4.1:81');
+
+socket.onopen = () => {
+    console.log('✅ WebSocket открыт (ESP32)');
+    useRTK = true;
+    if (geoWatchId !== null) {
+     navigator.geolocation.clearWatch(geoWatchId);
+     geoWatchId = null;
+  }
+};
+
+socket.onerror = (error) => {
+    console.error('❌ WebSocket ошибка:', error);
+    useRTK = false;
+    startInternalGPS();
+};
+
+let gpsEntity = viewer.entities.add({
+    name: 'RTK GPS Marker',
+    position: Cesium.Cartesian3.fromDegrees(0, 0),
+    point: {
+        pixelSize: 12,
+        color: Cesium.Color.YELLOW,
+    },
+});
+// Обработка приходящих GPS строк
+socket.onmessage = (event) => {
+  const line = event.data.trim();
+
+  // --- RTK статус --- (только из GGA строки)
+  if (line.startsWith('$GNGGA') || line.startsWith('$GPGGA')) {
+    const parts = line.split(',');
+    if (parts.length > 6) {
+      const fixType = parts[6];
+      const gpsStatus = document.getElementById('gpsStatus');
+      if (gpsStatus) {
+        let fixLabel = 'Нет Fix';
+        let fixColor = 'gray';
+
+        if (fixType === '1') {
+          fixLabel = 'Fix (обычный)';
+          fixColor = 'white';
+        }
+        if (fixType === '2') {
+          fixLabel = 'DGPS';
+          fixColor = 'yellow';
+        }
+        if (fixType === '4') {
+          fixLabel = 'RTK (Fix)';
+          fixColor = 'lime';
+        }
+        if (fixType === '5') {
+          fixLabel = 'RTK (Float)';
+          fixColor = 'orange';
+        }
+
+        gpsStatus.innerText = `RTK: ${fixLabel}`;
+        gpsStatus.style.color = fixColor;
+      }
+    }
+  }
+
+  // --- Координаты --- (например, из RMC строки)
+  if (line.startsWith('$GNRMC') || line.startsWith('$GPRMC')) {
+    const parts = line.split(',');
+    if (parts.length > 6) {
+      const lat = parseFloat(parts[3]);
+      const latDir = parts[4];
+      const lon = parseFloat(parts[5]);
+      const lonDir = parts[6];
+
+      if (!lat || !latDir || !lon || !lonDir || isNaN(lat) || isNaN(lon)) {
+        console.warn('⚠️ Пропущены неверные данные координат:', lat, latDir, lon, lonDir);
+        return;
+      }
+
+      const convert = (val, dir) => {
+        const deg = Math.floor(val / 100);
+        const min = val - deg * 100;
+        let coord = deg + min / 60;
+        if (dir === 'S' || dir === 'W') coord = -coord;
+        return coord;
+      };
+
+      const latitude = convert(lat, latDir);
+      const longitude = convert(lon, lonDir);
+
+      console.log(`📍 Координаты: ${latitude}, ${longitude}`);
+
+      // Обновление позиции маркера
+      gpsEntity.position = Cesium.Cartesian3.fromDegrees(longitude, latitude);
+
+      // Обновление координат в интерфейсе
+      const coordBox = document.getElementById('gpsCoordinates');
+      if (coordBox) {
+        coordBox.innerText = `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      }
+    }
+  }
+};
       }
     };
   </script>
