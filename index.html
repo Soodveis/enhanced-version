@@ -88,6 +88,7 @@
 
     window.viewer = undefined;
     let currentSession = null;
+    let gpsEntity; // глобально, для RTK и встроенного GPS
     let renderer, canvas, scene, camera, cube;
     let refSpace = null;
 
@@ -125,6 +126,14 @@
         const kmlDataSource = await Cesium.KmlDataSource.load(resource);
         viewer.dataSources.add(kmlDataSource);
         viewer.flyTo(kmlDataSource);
+        gpsEntity = viewer.entities.add({
+          name: 'RTK GPS Marker',
+          position: Cesium.Cartesian3.fromDegrees(0, 0),
+          point: {
+           pixelSize: 12,
+           color: Cesium.Color.YELLOW,
+          },
+        });
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
