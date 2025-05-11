@@ -1,3 +1,4 @@
+/*
 const connectButton = document.getElementById('connectRTK');
 
 if (connectButton) {
@@ -31,3 +32,4 @@ if (connectButton) {
     }
   });
 }
+*/
