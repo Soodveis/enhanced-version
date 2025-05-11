@@ -152,6 +152,7 @@
       localStorage.setItem('cesiumToken', token);
       localStorage.setItem('cesiumAssetId', assetId);
 
+      await loadScene(token, assetId);
     };
 
     document.getElementById('enterAR').onclick = async function () {
