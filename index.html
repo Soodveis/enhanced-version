@@ -275,6 +275,8 @@ function startInternalGPS() {
     (position) => {
       if (useRTK) return; // RTK уже активен — игнорируем
 
+      console.log('✅ Включён внутренний GPS (встроенный приёмник)');
+
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
 
@@ -312,6 +314,7 @@ socket.onopen = () => {
     useRTK = true;
     if (geoWatchId !== null) {
      navigator.geolocation.clearWatch(geoWatchId);
+     console.log('❌ Отключён внутренний GPS (используется RTK)');
      geoWatchId = null;
   }
 };
