@@ -143,7 +143,6 @@
       localStorage.setItem('cesiumToken', token);
       localStorage.setItem('cesiumAssetId', assetId);
 
-      await loadScene(token, assetId);
     };
 
     document.getElementById('enterAR').onclick = async function () {
@@ -331,6 +330,8 @@ socket.onerror = (error) => {
     useRTK = false;
     startInternalGPS();
 };
+
+await loadScene(token, assetId);
 
 let gpsEntity = viewer.entities.add({
     name: 'RTK GPS Marker',
