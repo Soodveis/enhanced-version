@@ -133,7 +133,7 @@
            pixelSize: 12,
            color: Cesium.Color.YELLOW,
           },
-        });
+       });
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
@@ -342,14 +342,6 @@ socket.onerror = (error) => {
 
 await loadScene(token, assetId);
 
-let gpsEntity = viewer.entities.add({
-    name: 'RTK GPS Marker',
-    position: Cesium.Cartesian3.fromDegrees(0, 0),
-    point: {
-        pixelSize: 12,
-        color: Cesium.Color.YELLOW,
-    },
-});
 // Обработка приходящих GPS строк
 socket.onmessage = (event) => {
   const line = event.data.trim();
