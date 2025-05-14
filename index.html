@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Cesium + WebXR Viewer</title>
-  <script src="Cesium/Cesium.js"></script>
-  <link href="Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <style>
     html, body, #cesiumContainer {
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
@@ -84,7 +84,7 @@
   </div>
   <div id="messageBox"></div>
   <script type="module">
-    import * as THREE from './libs/three.module.js';  
+    import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
     window.viewer = undefined;
     let currentSession = null;
@@ -109,63 +109,36 @@
     document.getElementById('assetId').addEventListener('input', validateInputs);
 
     async function loadScene(token, assetId) {
-  const isOnline = navigator.onLine;
-  Cesium.Ion.defaultAccessToken = token;
-
-  const imageryProvider = isOnline
-    ? new Cesium.IonImageryProvider({ assetId: 2 }) // Онлайн: текстурный слой
-    : new Cesium.SingleTileImageryProvider({       // Оффлайн: простая текстура
-        url: './Cesium/Assets/Textures/earthbump1k.jpg',
-        rectangle: Cesium.Rectangle.fromDegrees(-180, -90, 180, 90),
-      });
-
-      if (!window.viewer) {
-  window.viewer = new Cesium.Viewer('cesiumContainer', {
-    imageryProvider: imageryProvider,
-    baseLayerPicker: isOnline,
-    shouldAnimate: true,
-    scene3DOnly: true,
-    shadows: true,
-    useDefaultRenderLoop: true,
-  });
-
-  // 🟦 Только для оффлайн-режима вручную создаём глобус (иначе слетает онлайн-текстура)
-  if (!isOnline) {
-    viewer.scene.globe = new Cesium.Globe(Cesium.Ellipsoid.WGS84);
-  }
-} else {
-  viewer.dataSources.removeAll();
-}
-
-  try {
-    let kmlDataSource;
-    if (isOnline) {
-      const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
-      kmlDataSource = await Cesium.KmlDataSource.load(resource);
-    } else {
-      kmlDataSource = await Cesium.KmlDataSource.load('./data/localMap.kml', {
-        camera: viewer.scene.camera,
-        canvas: viewer.scene.canvas,
-      });
+      Cesium.Ion.defaultAccessToken = token;
+      if (!viewer) {
+        window.viewer = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+          baseLayerPicker: true,
+          shouldAnimate: true,
+          scene3DOnly: true,
+          shadows: true,
+          useDefaultRenderLoop: true,
+        });
+      }
+      viewer.dataSources.removeAll();
+      try {
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(kmlDataSource);
+        gpsEntity = viewer.entities.add({
+          name: 'RTK GPS Marker',
+          position: Cesium.Cartesian3.fromDegrees(0, 0),
+          point: {
+           pixelSize: 12,
+           color: Cesium.Color.YELLOW,
+          },
+       });
+      } catch (error) {
+        console.error("Ошибка загрузки KML:", error);
+        alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
+      }
     }
-
-    viewer.dataSources.add(kmlDataSource);
-    viewer.flyTo(kmlDataSource);
-
-    gpsEntity = viewer.entities.add({
-      name: 'RTK GPS Marker',
-      position: Cesium.Cartesian3.fromDegrees(0, 0),
-      point: {
-        pixelSize: 12,
-        color: Cesium.Color.YELLOW,
-      },
-    });
-
-  } catch (error) {
-    console.error("❌ Ошибка загрузки сцены:", error);
-    alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
-  }
-}
 
     document.getElementById('loadScene').onclick = async function () {
       const token = document.getElementById('accessToken').value.trim();
